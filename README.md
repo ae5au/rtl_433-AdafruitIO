@@ -1,4 +1,4 @@
-# Acurite-AdafruitIO
+# rtl_433-AdafruitIO
 Parses data from rtl_433 decoded output and submits to Adafruit IO.  Specifically written for Acurite temperature sensors, but could easily be adapted to other devices.
 
 ## Setup:
