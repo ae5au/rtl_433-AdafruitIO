@@ -18,6 +18,11 @@ aio = Client(secrets['aio_username'], secrets['aio_key'])
 
 lastline = ""
 
+# Track failures and don't keep trying to post if there are errors (likely connectivity or service problems)
+last_failure = 0
+failure_delay = 60
+
+
 for line in sys.stdin:
     if line == lastline:
         continue
@@ -36,16 +41,20 @@ for line in sys.stdin:
         print("{:>10} {} {} ".format(reading.get("id"),reading.get("channel"),reading.get("temperature_F")),end = '')
         if (sensor["last_update"] + sensor["interval"] < reading_time) or (abs(sensor["last_temp"] - reading.get("temperature_F")) > sensor["max_temp_delta"]):
             try:
-                aio.send_data(sensor["feed"], reading["temperature_F"])
-                print("Posted: Temp",end = '')
-                if sensor.get("humidity_feed"):
-                    aio.send_data(sensor["humidity_feed"], reading["humidity"])
-                    print(", Humidity",end = '')
-                if sensor.get("battery_feed"):
-                    aio.send_data(sensor["battery_feed"], reading["battery_ok"])
-                    print(", Battery",end = '')
-                sensor["last_update"] = reading_time
-                sensor["last_temp"] = reading.get("temperature_F")
+                if (last_failure + failure_delay < time.monotonic()):
+                    aio.send_data(sensor["feed"], reading["temperature_F"])
+                    print("Posted: Temp",end = '')
+                    if sensor.get("humidity_feed"):
+                        aio.send_data(sensor["humidity_feed"], reading["humidity"])
+                        print(", Humidity",end = '')
+                    if sensor.get("battery_feed"):
+                        aio.send_data(sensor["battery_feed"], reading["battery_ok"])
+                        print(", Battery",end = '')
+                    sensor["last_update"] = reading_time
+                    sensor["last_temp"] = reading.get("temperature_F")
+                else:
+                    print("Recent failure, skipping...")
             except:
+                last_failure = time.monotonic()
                 print("Unexpected error:", sys.exc_info()[0])
     print("")
